@@ -33,7 +33,26 @@ app.config.from_envvar('MINITWIT_SETTINGS', silent=True)
 app.config['SESSION_TYPE'] = 'sqlalchemy'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + DATABASE
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
-session = Session(app)
+dbs = SQLAlchemy(app)
+
+
+class user(dbs.Model):
+    #SQLAlchemy defaults autoincrement to True
+    user_id = dbs.Column(dbs.Integer, primary_key=True)
+    username = dbs.Column(dbs.String(80), unique=True, nullable=False)
+    email = dbs.Column(dbs.String(120), unique=True, nullable=False)
+    pw_hash = dbs.Column(dbs.String(120), nullable=False);
+
+class follower(dbs.Model):
+    who_id = dbs.Column(dbs.Integer, primary_key=True)
+    whom_id = dbs.Column(dbs.Integer, primary_key=True)
+
+class message(dbs.Model):
+    message_id = dbs.Column(dbs.Integer, primary_key=True)
+    author_id = dbs.Column(dbs.Integer, nullable=False)
+    text = dbs.Column(dbs.Text, nullable=False)
+    pub_date = dbs.Column(dbs.DateTime, nullable=False, default=datetime.utcnow)
+
 
 def get_db():
     """Opens a new database connection if there is none yet for the
@@ -56,10 +75,11 @@ def close_database(exception):
 
 def init_db():
     """Initializes the database."""
-    db = get_db()
-    with app.open_resource('schema.sql', mode='r') as f:
-        db.cursor().executescript(f.read())
-    db.commit()
+    dbs.create_all()
+    # db = get_db()
+    # with app.open_resource('schema.sql', mode='r') as f:
+    #     db.cursor().executescript(f.read())
+    # db.commit()
 
 
 @app.cli.command('initdb')
@@ -73,14 +93,21 @@ def query_db(query, args=(), one=False):
     """Queries the database and returns a list of dictionaries."""
     cur = get_db().execute(query, args)
     rv = cur.fetchall()
-    return (rv[0] if rv else None) if one else rv
+    result = (rv[0] if rv else None) if one else rv
+    print result
+    return result
 
 
 def get_user_id(username):
     """Convenience method to look up the id for a username."""
-    rv = query_db('select user_id from user where username = ?',
-                  [username], one=True)
-    return rv[0] if rv else None
+    get_user = user.query.filter_by(username=username).first()
+    print get_user.user_id
+    return get_user.user_id
+    # rv = query_db('select user_id from user where username = ?',
+    #               [username], one=True)
+    # result = rv[0] if rv else None
+    # print result
+    # return result
 
 
 
