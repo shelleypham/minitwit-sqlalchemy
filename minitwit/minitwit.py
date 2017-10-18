@@ -180,11 +180,13 @@ def user_timeline(username):
     #
     # print ('querrryy' + str(message_query))
     # return render_template('timeline.html', messages=message_query, followed=followed, profile_user=profile_user)
-    return render_template('timeline.html', messages=query_db('''
+    sql = '''
             select message.*, user.* from message, user where
-            user.user_id = message.author_id and user.user_id = ?
-            order by message.pub_date desc limit ?''',
-            [profile_user.user_id, PER_PAGE]), followed=followed,
+            user.user_id = message.author_id and user.user_id = %s
+            order by message.pub_date desc limit %s''' % (profile_user.user_id, PER_PAGE)
+    result = dbs.engine.execute(sql)
+
+    return render_template('timeline.html', messages=result, followed=followed,
             profile_user=profile_user)
 
 
