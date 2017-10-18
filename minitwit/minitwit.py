@@ -89,13 +89,13 @@ def initdb_command():
     print('Initialized the database.')
 
 
-def query_db(query, args=(), one=False):
-    """Queries the database and returns a list of dictionaries."""
-    cur = get_db().execute(query, args)
-    rv = cur.fetchall()
-    result = (rv[0] if rv else None) if one else rv
-    print result
-    return result
+# def query_db(query, args=(), one=False):
+#     """Queries the database and returns a list of dictionaries."""
+#     cur = get_db().execute(query, args)
+#     rv = cur.fetchall()
+#     result = (rv[0] if rv else None) if one else rv
+#     print result
+#     return result
 
 
 def get_user_id(username):
@@ -128,8 +128,9 @@ def gravatar_url(email, size=80):
 def before_request():
     g.user = None
     if 'user_id' in session:
-        g.user = query_db('select * from user where user_id = ?',
-                          [session['user_id']], one=True)
+        g.user = user.query.filter_by(user_id=session['user_id']).one()
+        # g.user = query_db('select * from user where user_id = ?',
+        #                   [session['user_id']], one=True)
 
 
 @app.route('/')
@@ -140,24 +141,31 @@ def timeline():
     """
     if not g.user:
         return redirect(url_for('public_timeline'))
-    return render_template('timeline.html', messages=query_db('''
+    sql = '''
         select message.*, user.* from message, user
         where message.author_id = user.user_id and (
-            user.user_id = ? or
+            user.user_id = %s or
             user.user_id in (select whom_id from follower
-                                    where who_id = ?))
-        order by message.pub_date desc limit ?''',
-        [session['user_id'], session['user_id'], PER_PAGE]))
+                                    where who_id = %s))
+        order by message.pub_date desc limit %s'''%(session['user_id'], session['user_id'], PER_PAGE)
+
+    result = dbs.engine.execute(sql)
+
+    return render_template('timeline.html', messages=result)
 
 
 @app.route('/public')
 def public_timeline():
     """Displays the latest messages of all users."""
 
-    return render_template('timeline.html', messages=query_db('''
+    sql = '''
         select message.*, user.* from message, user
         where message.author_id = user.user_id
-        order by message.pub_date desc limit ?''', [PER_PAGE]))
+        order by message.pub_date desc limit %s''' % (PER_PAGE)
+
+    result = dbs.engine.execute(sql)
+
+    return render_template('timeline.html', messages=result)
 
 
 @app.route('/<username>')
