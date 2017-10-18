@@ -153,6 +153,7 @@ def timeline():
 @app.route('/public')
 def public_timeline():
     """Displays the latest messages of all users."""
+
     return render_template('timeline.html', messages=query_db('''
         select message.*, user.* from message, user
         where message.author_id = user.user_id
@@ -162,21 +163,28 @@ def public_timeline():
 @app.route('/<username>')
 def user_timeline(username):
     """Display's a users tweets."""
-    profile_user = query_db('select * from user where username = ?',
-                            [username], one=True)
+    profile_user = user.query.filter_by(username=username).first()
+    # profile_user = query_db('select * from user where username = ?',
+    #                         [username], one=True)
     if profile_user is None:
         abort(404)
     followed = False
     if g.user:
-        followed = query_db('''select 1 from follower where
-            follower.who_id = ? and follower.whom_id = ?''',
-            [session['user_id'], profile_user['user_id']],
-            one=True) is not None
+        followed = follower.query.filter_by(who_id=session['user_id'], whom_id=profile_user.user_id)
+        # followed = query_db('''select 1 from follower where
+        #     follower.who_id = ? and follower.whom_id = ?''',
+        #     [session['user_id'], profile_user['user_id']],
+        #     one=True) is not None
+
+    # message_query = dbs.session.query(message, user).filter(user.user_id==message.author_id).filter(user.user_id==profile_user.user_id).all()
+    #
+    # print ('querrryy' + str(message_query))
+    # return render_template('timeline.html', messages=message_query, followed=followed, profile_user=profile_user)
     return render_template('timeline.html', messages=query_db('''
             select message.*, user.* from message, user where
             user.user_id = message.author_id and user.user_id = ?
             order by message.pub_date desc limit ?''',
-            [profile_user['user_id'], PER_PAGE]), followed=followed,
+            [profile_user.user_id, PER_PAGE]), followed=followed,
             profile_user=profile_user)
 
 
