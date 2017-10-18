@@ -188,10 +188,13 @@ def follow_user(username):
     whom_id = get_user_id(username)
     if whom_id is None:
         abort(404)
-    db = get_db()
-    db.execute('insert into follower (who_id, whom_id) values (?, ?)',
-              [session['user_id'], whom_id])
-    db.commit()
+    new_follow = follower(who_id=session['user_id'], whom_id=whom_id)
+    dbs.session.add(new_follow)
+    dbs.session.commit()
+    # db = get_db()
+    # db.execute('insert into follower (who_id, whom_id) values (?, ?)',
+    #           [session['user_id'], whom_id])
+    # db.commit()
     flash('You are now following "%s"' % username)
     return redirect(url_for('user_timeline', username=username))
 
@@ -204,10 +207,13 @@ def unfollow_user(username):
     whom_id = get_user_id(username)
     if whom_id is None:
         abort(404)
-    db = get_db()
-    db.execute('delete from follower where who_id=? and whom_id=?',
-              [session['user_id'], whom_id])
-    db.commit()
+    unwanted_follow = follower.query.filter_by(who_id=session['user_id']).first()
+    dbs.session.delete(unwanted_follow)
+    dbs.session.commit()
+    # db = get_db()
+    # db.execute('delete from follower where who_id=? and whom_id=?',
+    #           [session['user_id'], whom_id])
+    # db.commit()
     flash('You are no longer following "%s"' % username)
     return redirect(url_for('user_timeline', username=username))
 
