@@ -115,7 +115,7 @@ def get_user_id(username):
 
 def format_datetime(timestamp):
     """Format a timestamp for display."""
-    return datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d @ %H:%M')
+    return timestamp
 
 
 def gravatar_url(email, size=80):
@@ -218,11 +218,14 @@ def add_message():
     if 'user_id' not in session:
         abort(401)
     if request.form['text']:
-        db = get_db()
-        db.execute('''insert into message (author_id, text, pub_date)
-          values (?, ?, ?)''', (session['user_id'], request.form['text'],
-                                int(time.time())))
-        db.commit()
+        new_message = message(author_id=session['user_id'], text=request.form['text'])
+        dbs.session.add(new_message)
+        dbs.session.commit()
+        # db = get_db()
+        # db.execute('''insert into message (author_id, text, pub_date)
+        #   values (?, ?, ?)''', (session['user_id'], request.form['text'],
+        #                         int(time.time())))
+        # db.commit()
         flash('Your message was recorded')
     return redirect(url_for('timeline'))
 
@@ -235,7 +238,7 @@ def login():
     error = None
     if request.method == 'POST':
         user_query = user.query.filter_by(username=request.form['username']).first()
-        print 'user ' + str(user_query)
+        print 'user ' + str(user_query.user_id)
         # user = query_db('''select * from user where
         #     username = ?''', [request.form['username']], one=True)
         if user_query is None:
@@ -248,7 +251,7 @@ def login():
         else:
             flash('You were logged in')
 
-            session['user_id'] = str(get_user_id(user_query.username))
+            session['user_id'] = str(user_query.user_id)
             # session['user_id'] = user['user_id']
             return redirect(url_for('timeline'))
     return render_template('login.html', error=error)
