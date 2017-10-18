@@ -1,0 +1,16 @@
+MANIFEST.in
+README
+setup.cfg
+minitwit/__init__.py
+minitwit/minitwit.py
+minitwit/schema.sql
+minitwit.egg-info/PKG-INFO
+minitwit.egg-info/SOURCES.txt
+minitwit.egg-info/dependency_links.txt
+minitwit.egg-info/requires.txt
+minitwit.egg-info/top_level.txt
+minitwit/static/style.css
+minitwit/templates/layout.html
+minitwit/templates/login.html
+minitwit/templates/register.html
+minitwit/templates/timeline.html
