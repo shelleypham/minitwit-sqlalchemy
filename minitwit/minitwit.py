@@ -41,7 +41,7 @@ class user(dbs.Model):
     user_id = dbs.Column(dbs.Integer, primary_key=True)
     username = dbs.Column(dbs.String(80), unique=True, nullable=False)
     email = dbs.Column(dbs.String(120), unique=True, nullable=False)
-    pw_hash = dbs.Column(dbs.String(120), nullable=False);
+    pw_hash = dbs.Column(dbs.String(240), nullable=False);
 
 class follower(dbs.Model):
     who_id = dbs.Column(dbs.Integer, primary_key=True)
@@ -101,8 +101,10 @@ def query_db(query, args=(), one=False):
 def get_user_id(username):
     """Convenience method to look up the id for a username."""
     get_user = user.query.filter_by(username=username).first()
-    print get_user.user_id
-    return get_user.user_id
+    if get_user is not None:
+        print get_user.user_id
+        return get_user.user_id
+    return None
     # rv = query_db('select user_id from user where username = ?',
     #               [username], one=True)
     # result = rv[0] if rv else None
@@ -265,12 +267,16 @@ def register():
         elif get_user_id(request.form['username']) is not None:
             error = 'The username is already taken'
         else:
-            db = get_db()
-            db.execute('''insert into user (
-              username, email, pw_hash) values (?, ?, ?)''',
-              [request.form['username'], request.form['email'],
-               generate_password_hash(request.form['password'])])
-            db.commit()
+            # db = get_db()
+            # db.execute('''insert into user (
+            #   username, email, pw_hash) values (?, ?, ?)''',
+            #   [request.form['username'], request.form['email'],
+            #    generate_password_hash(request.form['password'])])
+            # db.commit()
+            new_user = user(username=request.form['username'], email=request.form['email'], pw_hash=generate_password_hash(request.form['password']))
+            dbs.session.add(new_user)
+            dbs.session.commit()
+
             flash('You were successfully registered and can login now')
             return redirect(url_for('login'))
     return render_template('register.html', error=error)
