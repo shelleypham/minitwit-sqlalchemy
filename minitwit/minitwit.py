@@ -33,7 +33,7 @@ app.config.from_envvar('MINITWIT_SETTINGS', silent=True)
 app.config['SESSION_TYPE'] = 'sqlalchemy'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + DATABASE
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
-db = SQLAlchemy(app)
+session = Session(app)
 
 def get_db():
     """Opens a new database connection if there is none yet for the
@@ -54,10 +54,12 @@ def close_database(exception):
         top.sqlite_db.close()
 
 
-
 def init_db():
     """Initializes the database."""
-    db.create_all()
+    db = get_db()
+    with app.open_resource('schema.sql', mode='r') as f:
+        db.cursor().executescript(f.read())
+    db.commit()
 
 
 @app.cli.command('initdb')
@@ -67,17 +69,19 @@ def initdb_command():
     print('Initialized the database.')
 
 
-# def query_db(query, args=(), one=False):
-#     """Queries the database and returns a list of dictionaries."""
-#     cur = get_db().execute(query, args)
-#     rv = cur.fetchall()
-#     return (rv[0] if rv else None) if one else rv
+def query_db(query, args=(), one=False):
+    """Queries the database and returns a list of dictionaries."""
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    return (rv[0] if rv else None) if one else rv
 
 
 def get_user_id(username):
     """Convenience method to look up the id for a username."""
-    user = user.query.filter_by(username=username)
-    return user.id
+    rv = query_db('select user_id from user where username = ?',
+                  [username], one=True)
+    return rv[0] if rv else None
+
 
 
 def format_datetime(timestamp):
@@ -129,8 +133,8 @@ def public_timeline():
 @app.route('/<username>')
 def user_timeline(username):
     """Display's a users tweets."""
-    profile_user = user.query.filter_by(username=user)
-
+    profile_user = query_db('select * from user where username = ?',
+                            [username], one=True)
     if profile_user is None:
         abort(404)
     followed = False
@@ -155,11 +159,10 @@ def follow_user(username):
     whom_id = get_user_id(username)
     if whom_id is None:
         abort(404)
-
-    new_follower = follower(who_id, whom_id)
-    db.session.add(new_follower)
-    db.session.commit()
-
+    db = get_db()
+    db.execute('insert into follower (who_id, whom_id) values (?, ?)',
+              [session['user_id'], whom_id])
+    db.commit()
     flash('You are now following "%s"' % username)
     return redirect(url_for('user_timeline', username=username))
 
@@ -172,11 +175,10 @@ def unfollow_user(username):
     whom_id = get_user_id(username)
     if whom_id is None:
         abort(404)
-
-    follower = follower(who_id, whom_id)
-    db.session.delete(follower)
-    db.session.commit()
-
+    db = get_db()
+    db.execute('delete from follower where who_id=? and whom_id=?',
+              [session['user_id'], whom_id])
+    db.commit()
     flash('You are no longer following "%s"' % username)
     return redirect(url_for('user_timeline', username=username))
 
@@ -192,8 +194,6 @@ def add_message():
           values (?, ?, ?)''', (session['user_id'], request.form['text'],
                                 int(time.time())))
         db.commit()
-        db.query
-        message = message(request.form['text'],)
         flash('Your message was recorded')
     return redirect(url_for('timeline'))
 
