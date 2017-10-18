@@ -234,16 +234,22 @@ def login():
         return redirect(url_for('timeline'))
     error = None
     if request.method == 'POST':
-        user = query_db('''select * from user where
-            username = ?''', [request.form['username']], one=True)
-        if user is None:
+        user_query = user.query.filter_by(username=request.form['username']).first()
+        print 'user ' + str(user_query)
+        # user = query_db('''select * from user where
+        #     username = ?''', [request.form['username']], one=True)
+        if user_query is None:
             error = 'Invalid username'
-        elif not check_password_hash(user['pw_hash'],
+        # elif not check_password_hash(user['pw_hash'],
+        #                              request.form['password']):
+        elif not check_password_hash(user_query.pw_hash,
                                      request.form['password']):
             error = 'Invalid password'
         else:
             flash('You were logged in')
-            session['user_id'] = user['user_id']
+
+            session['user_id'] = str(get_user_id(user_query.username))
+            # session['user_id'] = user['user_id']
             return redirect(url_for('timeline'))
     return render_template('login.html', error=error)
 
